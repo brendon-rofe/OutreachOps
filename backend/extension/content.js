@@ -310,3 +310,71 @@ new MutationObserver(() => {}).observe(document.documentElement, {
   childList: true,
   subtree: true,
 });
+
+window.addEventListener(
+  "click",
+  async (e) => {
+    // LinkedIn's send button in DMs
+    const btn = e.target.closest(
+      'button.msg-form__send-button, button[aria-label="Send"], button[aria-label="Send now"]'
+    );
+    if (!btn) return;
+
+    console.log("[DMTracker] Detected DM Send button click");
+
+    // Try to extract the recipient name from the chat header
+    let recipientName = "";
+    try {
+      // Adjust this selector if needed once you inspect messaging DOM
+      const header =
+        document.querySelector(".msg-thread__link") ||
+        document.querySelector('[data-control-name="conversation_title"]') ||
+        document.querySelector("h2, h1");
+
+      if (header && header.textContent) {
+        recipientName = header.textContent.trim();
+      }
+    } catch (err) {
+      console.warn("[DMTracker] Failed to read recipient name:", err);
+    }
+
+    if (!recipientName) recipientName = "Unknown DM";
+
+    const dmEvent = {
+      ts: Date.now(),
+      url: "https://www.linkedin.com/messaging/thread",
+      name: recipientName,
+      kind: "dm",
+    };
+
+    console.log("[DMTracker] Logging DM event:", dmEvent);
+
+    // Save locally
+    try {
+      const STORAGE_KEY = "connect_events";
+      const got = await chrome.storage.local.get(STORAGE_KEY);
+      let events = got[STORAGE_KEY] || [];
+      if (!Array.isArray(events)) events = [];
+      events.unshift(dmEvent);
+      await chrome.storage.local.set({
+        [STORAGE_KEY]: events.slice(0, 500),
+      });
+    } catch (err) {
+      console.error("[DMTracker] Error storing DM event:", err);
+    }
+
+    // OPTIONAL: send to backend
+    try {
+      fetch("http://localhost:3000/api/dms/1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipientName }),
+      });
+    } catch (err) {
+      console.error("[DMTracker] Failed sending DM event to backend:", err);
+    }
+  },
+  true // <-- IMPORTANT: use capture phase like the connect listener
+);
+
+

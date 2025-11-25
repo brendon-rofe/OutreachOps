@@ -21,6 +21,13 @@ function fmt(ts) {
   }
 }
 
+function activityLine(evt) {
+  if (evt.kind === "dm") {
+    return "DM sent";
+  }
+  return "Connect request sent";
+}
+
 function renderEventCard(evt) {
   const { name, url } = evt;
   const initial =
@@ -36,14 +43,14 @@ function renderEventCard(evt) {
         <div class="card-text">
           <p class="name-line">${name || "Unknown"}</p>
           <p class="meta-line">${fmt(evt.ts)}</p>
-          <p class="meta-line">Connect request sent</p>
+          <p class="meta-line">${activityLine(evt)}</p>
         </div>
       </div>
 
       <div class="card-footer">
         <a
           class="open-btn"
-          href="${url}"
+          href="${url || "#"}"
           target="_blank"
           rel="noreferrer"
         >
@@ -62,22 +69,52 @@ async function render() {
   if (!Array.isArray(events)) events = [];
 
   const list = document.getElementById("list");
-  const badge = document.getElementById("count-badge");
+  const connectBadge = document.getElementById("connect-count");
+  const dmBadge = document.getElementById("dm-count");
 
   if (!events.length) {
-    badge.textContent = "0";
+    if (connectBadge) connectBadge.textContent = "0";
+    if (dmBadge) dmBadge.textContent = "0";
     list.innerHTML = `
-      <div class="empty-state">No invites tracked yet.</div>
+      <div class="empty-state">No outreach tracked yet.</div>
     `;
     return;
   }
 
-  badge.textContent = String(events.length);
+  // Partition events by kind
+  const connects = events.filter((e) => e.kind !== "dm"); // default to connect if no kind
+  const dms = events.filter((e) => e.kind === "dm");
 
-  // newest first (already unshifted in background/content, but let's keep this explicit)
-  const recent = events.slice(0, 20);
+  if (connectBadge) connectBadge.textContent = String(connects.length);
+  if (dmBadge) dmBadge.textContent = String(dms.length);
 
-  list.innerHTML = recent.map(renderEventCard).join("");
+  // Limit each section to latest 10 (20 total)
+  const recentConnects = connects.slice(0, 10);
+  const recentDms = dms.slice(0, 10);
+
+  let html = "";
+
+  if (recentConnects.length) {
+    html += `
+      <div class="section">
+        <div class="section-title">Connect requests</div>
+        ${recentConnects.map(renderEventCard).join("")}
+      </div>
+    `;
+  }
+
+  if (recentDms.length) {
+    html += `
+      <div class="section">
+        <div class="section-title">DMs sent</div>
+        ${recentDms.map(renderEventCard).join("")}
+      </div>
+    `;
+  }
+
+  list.innerHTML = html || `
+    <div class="empty-state">No outreach tracked yet.</div>
+  `;
 }
 
 // Clears storage and then re-renders
@@ -86,9 +123,29 @@ async function clearLog() {
   await render();
 }
 
+// Append a new DM log entry (manual button in popup)
+async function logDmClick() {
+  const dmEvent = {
+    ts: Date.now(),
+    url: "https://www.linkedin.com/messaging/",
+    name: "Manual DM logged",
+    kind: "dm",
+  };
+
+  const { [STORAGE_KEY]: stored } = await chrome.storage.local.get(STORAGE_KEY);
+  let events = stored || [];
+  if (!Array.isArray(events)) events = [];
+  events.unshift(dmEvent);
+
+  await chrome.storage.local.set({
+    [STORAGE_KEY]: events.slice(0, 500),
+  });
+
+  await render();
+}
+
 // Hook up events and initial load
 async function init() {
-  // attach click handler to Clear button
   const clearBtn = document.getElementById("clear-btn");
   if (clearBtn) {
     clearBtn.addEventListener("click", async () => {
@@ -103,7 +160,13 @@ async function init() {
     });
   }
 
-  // initial render
+  const dmBtn = document.getElementById("dm-btn");
+  if (dmBtn) {
+    dmBtn.addEventListener("click", async () => {
+      await logDmClick();
+    });
+  }
+
   await render();
 }
 
