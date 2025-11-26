@@ -1,4 +1,5 @@
 const STORAGE_KEY = "connect_events";
+let currentTab = "connect"; // "connect" | "dm"
 
 function fmt(ts) {
   try {
@@ -61,6 +62,20 @@ function renderEventCard(evt) {
   `;
 }
 
+function updateTabsUI() {
+  const tabConnect = document.getElementById("tab-connects");
+  const tabDms = document.getElementById("tab-dms");
+  if (!tabConnect || !tabDms) return;
+
+  if (currentTab === "connect") {
+    tabConnect.classList.add("tab-active");
+    tabDms.classList.remove("tab-active");
+  } else {
+    tabDms.classList.add("tab-active");
+    tabConnect.classList.remove("tab-active");
+  }
+}
+
 // Reads from storage and updates DOM
 async function render() {
   const { [STORAGE_KEY]: stored } = await chrome.storage.local.get(STORAGE_KEY);
@@ -72,49 +87,29 @@ async function render() {
   const connectBadge = document.getElementById("connect-count");
   const dmBadge = document.getElementById("dm-count");
 
-  if (!events.length) {
-    if (connectBadge) connectBadge.textContent = "0";
-    if (dmBadge) dmBadge.textContent = "0";
-    list.innerHTML = `
-      <div class="empty-state">No outreach tracked yet.</div>
-    `;
-    return;
-  }
-
-  // Partition events by kind
-  const connects = events.filter((e) => e.kind !== "dm"); // default to connect if no kind
+  // Partition by kind
+  const connects = events.filter((e) => e.kind !== "dm");
   const dms = events.filter((e) => e.kind === "dm");
 
   if (connectBadge) connectBadge.textContent = String(connects.length);
   if (dmBadge) dmBadge.textContent = String(dms.length);
 
-  // Limit each section to latest 10 (20 total)
-  const recentConnects = connects.slice(0, 10);
-  const recentDms = dms.slice(0, 10);
+  const isConnectTab = currentTab === "connect";
+  const activeList = isConnectTab ? connects : dms;
 
-  let html = "";
-
-  if (recentConnects.length) {
-    html += `
-      <div class="section">
-        <div class="section-title">Connect requests</div>
-        ${recentConnects.map(renderEventCard).join("")}
-      </div>
+  if (!activeList.length) {
+    const msg = isConnectTab
+      ? "No connect requests tracked yet."
+      : "No DMs tracked yet.";
+    list.innerHTML = `
+      <div class="empty-state">${msg}</div>
     `;
+    return;
   }
 
-  if (recentDms.length) {
-    html += `
-      <div class="section">
-        <div class="section-title">DMs sent</div>
-        ${recentDms.map(renderEventCard).join("")}
-      </div>
-    `;
-  }
-
-  list.innerHTML = html || `
-    <div class="empty-state">No outreach tracked yet.</div>
-  `;
+  // Limit to latest 20 in the active tab
+  const recent = activeList.slice(0, 20);
+  list.innerHTML = recent.map(renderEventCard).join("");
 }
 
 // Clears storage and then re-renders
@@ -123,7 +118,7 @@ async function clearLog() {
   await render();
 }
 
-// Append a new DM log entry (manual button in popup)
+// Append a new DM log entry (manual DM button in popup)
 async function logDmClick() {
   const dmEvent = {
     ts: Date.now(),
@@ -167,6 +162,26 @@ async function init() {
     });
   }
 
+  const tabConnect = document.getElementById("tab-connects");
+  const tabDms = document.getElementById("tab-dms");
+
+  if (tabConnect) {
+    tabConnect.addEventListener("click", async () => {
+      currentTab = "connect";
+      updateTabsUI();
+      await render();
+    });
+  }
+
+  if (tabDms) {
+    tabDms.addEventListener("click", async () => {
+      currentTab = "dm";
+      updateTabsUI();
+      await render();
+    });
+  }
+
+  updateTabsUI();
   await render();
 }
 

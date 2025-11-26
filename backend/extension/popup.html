@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Connect Tracker</title>
+    <title>Outreach Tracker</title>
 
     <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin />
     <link
@@ -109,7 +109,11 @@
         padding: 2px 8px;
       }
 
-      /* Clear / dashboard / dm buttons */
+      .right-buttons {
+        display: flex;
+        gap: 6px;
+      }
+
       .clear-btn {
         appearance: none;
         background-color: var(--bg-btn-danger);
@@ -148,9 +152,31 @@
         filter: brightness(0.9);
       }
 
-      .right-buttons {
+      /* tabs */
+      .tabs {
         display: flex;
         gap: 6px;
+        margin-top: 10px;
+      }
+
+      .tab {
+        flex: 1;
+        appearance: none;
+        border-radius: 9999px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background-color: transparent;
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 500;
+        padding: 6px 8px;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .tab-active {
+        background-color: var(--bg-pill);
+        color: var(--text-primary);
+        border-color: rgba(255, 255, 255, 0.15);
       }
 
       /* list container */
@@ -169,20 +195,6 @@
         text-align: center;
         padding: 32px 0;
         width: 100%;
-      }
-
-      .section {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .section-title {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
       }
 
       /* card */
@@ -302,6 +314,14 @@
           </button>
           <button id="clear-btn" class="clear-btn" type="button">Clear</button>
         </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button id="tab-connects" class="tab tab-active" type="button">
+          Connects
+        </button>
+        <button id="tab-dms" class="tab" type="button">DMs</button>
       </div>
     </div>
 
