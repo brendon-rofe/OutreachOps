@@ -366,14 +366,34 @@ window.addEventListener(
 
     // OPTIONAL: send to backend
     try {
-      fetch("https://cruciate-chaya-modernly.ngrok-free.dev/api/direct-messages/1", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipientName }),
-      });
+      fetch(
+        "https://cruciate-chaya-modernly.ngrok-free.dev/api/direct-messages/1",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recipientName }),
+        }
+      )
+        .then(async (res) => {
+          const text = await res.text().catch(() => "");
+          console.log(
+            "[DMTracker] API response for direct-message:",
+            res.status,
+            text
+          );
+          if (!res.ok) {
+            console.warn(
+              "[DMTracker] direct-message API responded with non-2xx status"
+            );
+          }
+        })
+        .catch((err) => {
+          console.error("[DMTracker] Network error sending DM event:", err);
+        });
     } catch (err) {
-      console.error("[DMTracker] Failed sending DM event to backend:", err);
+      console.error("[DMTracker] Sync error before fetch:", err);
     }
+    
   },
   true // <-- IMPORTANT: use capture phase like the connect listener
 );
