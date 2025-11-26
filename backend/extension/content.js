@@ -323,13 +323,14 @@ window.addEventListener(
     console.log("[DMTracker] Detected DM Send button click");
 
     // Try to extract the recipient name from the chat header
+    // Try to extract the recipient name from the chat header
     let recipientName = "";
     try {
-      // Adjust this selector if needed once you inspect messaging DOM
+      // Primary: the element you showed
       const header =
+        document.querySelector("h2.msg-entity-lockup__entity-title") ||
         document.querySelector(".msg-thread__link") ||
-        document.querySelector('[data-control-name="conversation_title"]') ||
-        document.querySelector("h2, h1");
+        document.querySelector('[data-control-name="conversation_title"]');
 
       if (header && header.textContent) {
         recipientName = header.textContent.trim();
