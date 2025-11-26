@@ -365,7 +365,7 @@ window.addEventListener(
 
     // OPTIONAL: send to backend
     try {
-      fetch("http://localhost:3000/api/dms/1", {
+      fetch("https://cruciate-chaya-modernly.ngrok-free.dev/api/direct-messages/1", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recipientName }),
