@@ -314,7 +314,6 @@ new MutationObserver(() => {}).observe(document.documentElement, {
 window.addEventListener(
   "click",
   async (e) => {
-    // LinkedIn's send button in DMs
     const btn = e.target.closest(
       'button.msg-form__send-button, button[aria-label="Send"], button[aria-label="Send now"]'
     );
@@ -325,8 +324,6 @@ window.addEventListener(
     // 1) Recipient name
     let recipientName = "";
     try {
-      // Prefer the header structure you showed:
-      // <h2 class="msg-entity-lockup__entity-title ...">Jessica James</h2>
       const headerEl =
         document.querySelector("h2.msg-entity-lockup__entity-title") ||
         document.querySelector(".msg-thread__link") ||
@@ -341,7 +338,24 @@ window.addEventListener(
     }
     if (!recipientName) recipientName = "Unknown DM";
 
-    // 2) Message content from the composer
+    // 2) Profile URL from the link you showed
+    let profileUrl = "";
+    try {
+      const linkEl = document.querySelector(
+        'a.msg-thread__link-to-profile[href*="/in/"]'
+      );
+      if (linkEl && linkEl.href) {
+        profileUrl = linkEl.href;
+      }
+    } catch (err) {
+      console.warn("[DMTracker] Failed to read profile URL:", err);
+    }
+    if (!profileUrl) {
+      // fallback to messaging URL if something changes
+      profileUrl = window.location.href;
+    }
+
+    // 3) Message content from composer
     let content = "";
     try {
       const composer = document.querySelector(
@@ -358,14 +372,12 @@ window.addEventListener(
     } catch (err) {
       console.warn("[DMTracker] Failed to read DM content:", err);
     }
+    if (!content) content = "(no content)";
 
-    if (!content) {
-      content = "(no content)"; // Prisma requires content – avoids missing-arg error
-    }
-
+    // 4) Event stored for popup
     const dmEvent = {
       ts: Date.now(),
-      url: window.location.href,
+      url: profileUrl,       // ✅ this is now the profile, not the thread
       name: recipientName,
       content,
       kind: "dm",
@@ -373,7 +385,7 @@ window.addEventListener(
 
     console.log("[DMTracker] Logging DM event:", dmEvent);
 
-    // Save locally for popup
+    // Save locally
     try {
       const STORAGE_KEY = "connect_events";
       const got = await chrome.storage.local.get(STORAGE_KEY);
@@ -387,7 +399,7 @@ window.addEventListener(
       console.error("[DMTracker] Error storing DM event:", err);
     }
 
-    // Send to backend with content
+    // Backend – keep ONLY recipientName + content so Prisma doesn't explode
     try {
       fetch(
         "https://cruciate-chaya-modernly.ngrok-free.dev/api/direct-messages/1",
@@ -404,11 +416,6 @@ window.addEventListener(
             res.status,
             text
           );
-          if (!res.ok) {
-            console.warn(
-              "[DMTracker] direct-message API responded with non-2xx status"
-            );
-          }
         })
         .catch((err) => {
           console.error("[DMTracker] Network error sending DM event:", err);
