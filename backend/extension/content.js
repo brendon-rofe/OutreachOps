@@ -322,35 +322,58 @@ window.addEventListener(
 
     console.log("[DMTracker] Detected DM Send button click");
 
-    // Try to extract the recipient name from the chat header
-    // Try to extract the recipient name from the chat header
+    // 1) Recipient name
     let recipientName = "";
     try {
-      // Primary: the element you showed
-      const header =
+      // Prefer the header structure you showed:
+      // <h2 class="msg-entity-lockup__entity-title ...">Jessica James</h2>
+      const headerEl =
         document.querySelector("h2.msg-entity-lockup__entity-title") ||
         document.querySelector(".msg-thread__link") ||
-        document.querySelector('[data-control-name="conversation_title"]');
+        document.querySelector('[data-control-name="conversation_title"]') ||
+        document.querySelector("h2, h1");
 
-      if (header && header.textContent) {
-        recipientName = header.textContent.trim();
+      if (headerEl && headerEl.textContent) {
+        recipientName = headerEl.textContent.trim();
       }
     } catch (err) {
       console.warn("[DMTracker] Failed to read recipient name:", err);
     }
-
     if (!recipientName) recipientName = "Unknown DM";
+
+    // 2) Message content from the composer
+    let content = "";
+    try {
+      const composer = document.querySelector(
+        'div.msg-form__contenteditable[contenteditable="true"]'
+      );
+      if (composer) {
+        const p = composer.querySelector("p");
+        if (p && p.textContent) {
+          content = p.textContent.trim();
+        } else if (composer.innerText) {
+          content = composer.innerText.trim();
+        }
+      }
+    } catch (err) {
+      console.warn("[DMTracker] Failed to read DM content:", err);
+    }
+
+    if (!content) {
+      content = "(no content)"; // Prisma requires content – avoids missing-arg error
+    }
 
     const dmEvent = {
       ts: Date.now(),
-      url: "https://www.linkedin.com/messaging/thread",
+      url: window.location.href,
       name: recipientName,
+      content,
       kind: "dm",
     };
 
     console.log("[DMTracker] Logging DM event:", dmEvent);
 
-    // Save locally
+    // Save locally for popup
     try {
       const STORAGE_KEY = "connect_events";
       const got = await chrome.storage.local.get(STORAGE_KEY);
@@ -364,14 +387,14 @@ window.addEventListener(
       console.error("[DMTracker] Error storing DM event:", err);
     }
 
-    // OPTIONAL: send to backend
+    // Send to backend with content
     try {
       fetch(
         "https://cruciate-chaya-modernly.ngrok-free.dev/api/direct-messages/1",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recipientName }),
+          body: JSON.stringify({ recipientName, content }),
         }
       )
         .then(async (res) => {
@@ -393,9 +416,6 @@ window.addEventListener(
     } catch (err) {
       console.error("[DMTracker] Sync error before fetch:", err);
     }
-    
   },
-  true // <-- IMPORTANT: use capture phase like the connect listener
+  true
 );
-
-
