@@ -231,7 +231,7 @@ function handleConnectClick(btn) {
 
   // send to backend endpoint
   try {
-    fetch("http://localhost:3000/api/connect-requests/1", {
+    fetch("https://cruciate-chaya-modernly.ngrok-free.dev/api/connect-requests/1", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

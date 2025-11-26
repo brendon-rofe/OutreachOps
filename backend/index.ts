@@ -7,7 +7,21 @@ const prisma = new PrismaClient();
 const app: Express = express();
 const PORT: number = 3000;
 
-app.use(cors());
+const corsOptions: cors.CorsOptions = {
+  origin: [
+    "http://localhost:4200",   // Angular
+    "http://localhost:5173",   // Vite
+    "http://127.0.0.1:4200",
+    "http://127.0.0.1:5173",
+    "https://www.linkedin.com"
+  ],
+  methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"],
+  credentials: true,                 // only if you send cookies/Authorization
+  optionsSuccessStatus: 200,         // some browsers choke on 204
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.post('/api/connect-requests/:userId', async (req: Request, res: Response) => {
